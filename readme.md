@@ -5,5 +5,6 @@ Possible Improvements:
 + ~~prettier win screen~~
 + code should become a little prettier, especially the view
 + add draw screen
++ implement AI (with respect to Asimovs rules of course)
 
 To deploy: `npm start`

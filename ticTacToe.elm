@@ -3,8 +3,8 @@ module TicTacToe exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Set exposing (Set, insert, member, foldl)
-import Task
+import Set exposing (Set, insert, member)
+import Array exposing (Array)
 
 
 type alias Model =
@@ -109,19 +109,41 @@ didSomeoneWin model newMove =
 
 checkCells : Coordinates -> Player -> Maybe Player
 checkCells coords currentPlayer =
-    Nothing
-        |> checkDiagonal coords currentPlayer
-        |> checkDefaultWin (Set.map (\( x, y ) -> x) coords) currentPlayer
-        |> checkDefaultWin (Set.map (\( x, y ) -> y) coords) currentPlayer
+    let
+        coordList =
+            coords |> Set.toList |> Array.fromList
+    in
+        Nothing
+            |> checkDiagonal coords currentPlayer
+            |> checkDefaultWin (Array.map (\( x, y ) -> x) coordList) currentPlayer
+            |> checkDefaultWin (Array.map (\( x, y ) -> y) coordList) currentPlayer
 
 
-checkDefaultWin : Set Int -> Player -> Maybe Player -> Maybe Player
+checkDefaultWin : Array Int -> Player -> Maybe Player -> Maybe Player
 checkDefaultWin coords currentPlayer potentialWinner =
-    --    let
-    --        cumulatedCoordinates =
-    --            foldl (\c result -> ) ( 0, 0, 0 ) coords
-    --    in
-    potentialWinner
+    let
+        initial =
+            Array.fromList [ 0, 0, 0 ]
+
+        cumulatedCoordinates =
+            Array.foldl incrementAtPosition initial coords
+
+        threeInARow =
+            cumulatedCoordinates |> Array.filter (\e -> e == 3)
+    in
+        if Array.length threeInARow > 0 then
+            Just currentPlayer
+        else
+            Nothing
+
+
+incrementAtPosition : Int -> Array Int -> Array Int
+incrementAtPosition pos result =
+    let
+        new =
+            Array.get pos result |> Maybe.withDefault 0 |> (+) 1
+    in
+        Array.set pos new result
 
 
 checkDiagonal : Coordinates -> Player -> Maybe Player -> Maybe Player
