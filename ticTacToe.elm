@@ -167,9 +167,28 @@ view model =
             printWinScreen player
 
 
+winMessage : String
+winMessage =
+    "Holy crap, you won this incredible game of wits. Congratulations, you are a superstar!"
+
+
+drawMessage : String
+drawMessage =
+    "Well... that was boring. You guys are equally dull..."
+
+
 printWinScreen : Player -> Html Msg
 printWinScreen winner =
-    div [ class "winScreen" ] [ h1 [ onClick Restart ] [ winner |> toString |> text ] ]
+    div
+        []
+        [ h1 [] [ text "There can only be one" ]
+        , div []
+            [ div [ class "gameArea" ]
+                [ h3 [] [ text winMessage ]
+                , button [ onClick Restart ] [ text "Restart?" ]
+                ]
+            ]
+        ]
 
 
 printGameView : Model -> Html Msg
