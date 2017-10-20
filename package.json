@@ -1,0 +1,11 @@
+{
+  "name": "tictacelm",
+  "version": "1.0.0",
+  "description": "Simple Tic Tac Toe demo in elm",
+  "main": "elm.js",
+  "scripts": {
+    "start": "elm make --output=elm.js ticTacToe.elm"
+  },
+  "author": "Tomke Reibisch",
+  "license": "ISC"
+}
