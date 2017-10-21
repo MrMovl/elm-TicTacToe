@@ -131,10 +131,15 @@ checkDefaultWin coords currentPlayer potentialWinner =
         threeInARow =
             cumulatedCoordinates |> Array.filter (\e -> e == 3)
     in
-        if Array.length threeInARow > 0 then
-            Just currentPlayer
-        else
-            Nothing
+        case potentialWinner of
+            Just a ->
+                potentialWinner
+
+            Nothing ->
+                if Array.length threeInARow > 0 then
+                    Just currentPlayer
+                else
+                    Nothing
 
 
 incrementAtPosition : Int -> Array Int -> Array Int
