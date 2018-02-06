@@ -7,6 +7,20 @@ import Set exposing (Set, insert, member)
 import Array exposing (Array)
 
 
+main : Program Never Model Msg
+main =
+    Html.program
+        { init = ( initialModel, Cmd.none )
+        , view = view
+        , update = update
+        , subscriptions = (\_ -> Sub.none)
+        }
+
+
+
+------------ Model ------------
+
+
 type alias Model =
     { currentPlayer : Player
     , winner : Maybe Player
@@ -20,13 +34,13 @@ type alias Coordinates =
     Set Coordinate
 
 
+type alias Coordinate =
+    ( Int, Int )
+
+
 type Player
     = Cross
     | Circle
-
-
-type alias Coordinate =
-    ( Int, Int )
 
 
 initialModel : Model
@@ -39,149 +53,8 @@ initialModel =
     }
 
 
-type Msg
-    = CellClicked Coordinate
-    | Restart
 
-
-main : Program Never Model Msg
-main =
-    Html.program
-        { init = ( initialModel, Cmd.none )
-        , view = view
-        , update = update
-        , subscriptions = (\_ -> Sub.none)
-        }
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        CellClicked coordinate ->
-            ( takeTurn coordinate model, Cmd.none )
-
-        Restart ->
-            ( initialModel, Cmd.none )
-
-
-takeTurn : Coordinate -> Model -> Model
-takeTurn coord model =
-    if member coord model.usedCells then
-        model
-    else
-        case model.currentPlayer of
-            Cross ->
-                updateCrosses coord model
-
-            Circle ->
-                updateCircles coord model
-
-
-updateCrosses : Coordinate -> Model -> Model
-updateCrosses coord model =
-    { currentPlayer = nextPlayer model.currentPlayer
-    , winner = didSomeoneWin model coord
-    , crosses = insert coord model.crosses
-    , circles = model.circles
-    , usedCells = insert coord model.usedCells
-    }
-
-
-updateCircles : Coordinate -> Model -> Model
-updateCircles coord model =
-    { currentPlayer = nextPlayer model.currentPlayer
-    , winner = didSomeoneWin model coord
-    , crosses = model.crosses
-    , circles = insert coord model.circles
-    , usedCells = insert coord model.usedCells
-    }
-
-
-didSomeoneWin : Model -> Coordinate -> Maybe Player
-didSomeoneWin model newMove =
-    case model.currentPlayer of
-        Cross ->
-            checkCells (insert newMove model.crosses) model.currentPlayer
-
-        Circle ->
-            checkCells (insert newMove model.circles) model.currentPlayer
-
-
-checkCells : Coordinates -> Player -> Maybe Player
-checkCells coords currentPlayer =
-    let
-        coordList =
-            coords |> Set.toList |> Array.fromList
-    in
-        Nothing
-            |> checkDiagonal coords currentPlayer
-            |> checkDefaultWin (Array.map (\( x, y ) -> x) coordList) currentPlayer
-            |> checkDefaultWin (Array.map (\( x, y ) -> y) coordList) currentPlayer
-
-
-checkDefaultWin : Array Int -> Player -> Maybe Player -> Maybe Player
-checkDefaultWin coords currentPlayer potentialWinner =
-    let
-        initial =
-            Array.fromList [ 0, 0, 0 ]
-
-        cumulatedCoordinates =
-            Array.foldl incrementAtPosition initial coords
-
-        threeInARow =
-            cumulatedCoordinates |> Array.filter (\e -> e == 3)
-    in
-        case potentialWinner of
-            Just a ->
-                potentialWinner
-
-            Nothing ->
-                if Array.length threeInARow > 0 then
-                    Just currentPlayer
-                else
-                    Nothing
-
-
-incrementAtPosition : Int -> Array Int -> Array Int
-incrementAtPosition pos result =
-    let
-        new =
-            Array.get pos result |> Maybe.withDefault 0 |> (+) 1
-    in
-        Array.set pos new result
-
-
-checkDiagonal : Coordinates -> Player -> Maybe Player -> Maybe Player
-checkDiagonal coords currentPlayer potentialWinner =
-    case potentialWinner of
-        Just a ->
-            potentialWinner
-
-        Nothing ->
-            if (slash coords || backslash coords) then
-                Just currentPlayer
-            else
-                potentialWinner
-
-
-slash : Coordinates -> Bool
-slash coords =
-    member ( 0, 0 ) coords && member ( 1, 1 ) coords && member ( 2, 2 ) coords
-
-
-backslash : Coordinates -> Bool
-backslash coords =
-    member ( 0, 2 ) coords && member ( 1, 1 ) coords && member ( 2, 0 ) coords
-
-
-nextPlayer : Player -> Player
-nextPlayer currentPlayer =
-    case currentPlayer of
-        Cross ->
-            Circle
-
-        Circle ->
-            Cross
+------------ View ------------
 
 
 view : Model -> Html Msg
@@ -192,16 +65,6 @@ view model =
 
         Just player ->
             printWinScreen player
-
-
-winMessage : String
-winMessage =
-    "Holy crap, you won this incredible game of wits. Congratulations, you are a superstar!"
-
-
-drawMessage : String
-drawMessage =
-    "Well... that was boring. You guys are equally dull..."
 
 
 printWinScreen : Player -> Html Msg
@@ -218,13 +81,23 @@ printWinScreen winner =
         ]
 
 
+winMessage : String
+winMessage =
+    "Holy crap, you won this incredible game of wits. Congratulations, you are a superstar!"
+
+
+drawMessage : String
+drawMessage =
+    "Well... that was boring. You guys are equally dull..."
+
+
 printGameView : Model -> Html Msg
 printGameView model =
     div []
-        [ h1 [] [ text "There can only be one" ]
+        [ title
         , div []
             [ div [ class "gameArea" ]
-                [ h3 [] [ model.currentPlayer |> toString |> (++) "Current Player: " |> text ]
+                [ h3 [] [ currentPlayerText model.currentPlayer ]
                 , table []
                     [ tr []
                         [ printTableCell ( 0, 0 ) model
@@ -247,30 +120,31 @@ printGameView model =
         ]
 
 
+title : Html msg
+title =
+    h1 [] [ text "There can only be one" ]
+
+
+currentPlayerText : Player -> Html msg
+currentPlayerText currentPlayer =
+    currentPlayer |> toString |> (++) "Current Player: " |> text
+
+
 printTableCell : Coordinate -> Model -> Html Msg
 printTableCell coord model =
-    let
-        usedCells =
-            case model.currentPlayer of
-                Cross ->
-                    model.crosses
-
-                Circle ->
-                    model.circles
-    in
-        td
-            [ onClick (CellClicked coord) ]
-            [ div
-                [ marked coord model.crosses Cross
-                , marked coord model.circles Circle
-                ]
-                []
+    td
+        [ onClick (CellClicked coord) ]
+        [ div
+            [ markCell coord model.crosses Cross
+            , markCell coord model.circles Circle
             ]
+            []
+        ]
 
 
-marked : Coordinate -> Coordinates -> Player -> Html.Attribute a
-marked coord usedCells player =
-    if member coord usedCells then
+markCell : Coordinate -> Coordinates -> Player -> Html.Attribute a
+markCell coord usedCells player =
+    if Set.member coord usedCells then
         pickClass player |> class
     else
         class "none"
@@ -284,3 +158,167 @@ pickClass player =
 
         Circle ->
             "circle"
+
+
+
+------------ Update ------------
+
+
+type Msg
+    = CellClicked Coordinate
+    | Restart
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        CellClicked coordinate ->
+            ( takeTurn coordinate model, Cmd.none )
+
+        Restart ->
+            ( initialModel, Cmd.none )
+
+
+takeTurn : Coordinate -> Model -> Model
+takeTurn coord model =
+    if Set.member coord model.usedCells then
+        model
+    else
+        case model.currentPlayer of
+            Cross ->
+                updateCrosses coord model
+
+            Circle ->
+                updateCircles coord model
+
+
+updateCrosses : Coordinate -> Model -> Model
+updateCrosses coord model =
+    { currentPlayer = nextPlayer model.currentPlayer
+    , winner = didSomeoneWin model coord
+    , crosses = Set.insert coord model.crosses
+    , circles = model.circles
+    , usedCells = Set.insert coord model.usedCells
+    }
+
+
+updateCircles : Coordinate -> Model -> Model
+updateCircles coord model =
+    { currentPlayer = nextPlayer model.currentPlayer
+    , winner = didSomeoneWin model coord
+    , crosses = model.crosses
+    , circles = Set.insert coord model.circles
+    , usedCells = Set.insert coord model.usedCells
+    }
+
+
+nextPlayer : Player -> Player
+nextPlayer currentPlayer =
+    case currentPlayer of
+        Cross ->
+            Circle
+
+        Circle ->
+            Cross
+
+
+didSomeoneWin : Model -> Coordinate -> Maybe Player
+didSomeoneWin model newMove =
+    let
+        cellsToCheck =
+            case model.currentPlayer of
+                Cross ->
+                    Set.insert newMove model.crosses
+
+                Circle ->
+                    Set.insert newMove model.circles
+    in
+        checkCells cellsToCheck model.currentPlayer
+
+
+checkCells : Coordinates -> Player -> Maybe Player
+checkCells coords currentPlayer =
+    let
+        coordsAsList =
+            coords |> Set.toList |> Array.fromList
+
+        xCoords =
+            Array.map (\( x, y ) -> x) coordsAsList
+
+        yCoords =
+            Array.map (\( x, y ) -> y) coordsAsList
+    in
+        Nothing
+            |> checkDiagonal coords currentPlayer
+            |> checkDefaultWin xCoords currentPlayer
+            |> checkDefaultWin yCoords currentPlayer
+
+
+checkDiagonal : Coordinates -> Player -> Maybe Player -> Maybe Player
+checkDiagonal coords currentPlayer potentialWinner =
+    case potentialWinner of
+        Just a ->
+            potentialWinner
+
+        Nothing ->
+            if (slash coords || backslash coords) then
+                Just currentPlayer
+            else
+                potentialWinner
+
+
+slash : Coordinates -> Bool
+slash coords =
+    member ( 0, 0 ) coords
+        && member ( 1, 1 ) coords
+        && member ( 2, 2 ) coords
+
+
+backslash : Coordinates -> Bool
+backslash coords =
+    member ( 0, 2 ) coords
+        && member ( 1, 1 ) coords
+        && member ( 2, 0 ) coords
+
+
+
+{-
+   This is complicated...
+   This function takes all x values or all y values and counts how often
+   a row or column is used.
+   For example, if we check the xCoords, we take all x-es and count the
+   occurence of zeros, ones and twos. If either of those appears three
+   times, we have a full column.
+-}
+
+
+checkDefaultWin : Array Int -> Player -> Maybe Player -> Maybe Player
+checkDefaultWin coords currentPlayer potentialWinner =
+    let
+        initialBuckets =
+            Array.fromList [ 0, 0, 0 ]
+
+        cumulatedCoordinates =
+            Array.foldl incrementAtPosition initialBuckets coords
+
+        threeInARow =
+            cumulatedCoordinates |> Array.filter (\e -> e == 3)
+    in
+        case potentialWinner of
+            Just a ->
+                potentialWinner
+
+            Nothing ->
+                if Array.length threeInARow > 0 then
+                    Just currentPlayer
+                else
+                    Nothing
+
+
+incrementAtPosition : Int -> Array Int -> Array Int
+incrementAtPosition pos array =
+    let
+        new =
+            Array.get pos array |> Maybe.withDefault 0 |> (+) 1
+    in
+        Array.set pos new array
