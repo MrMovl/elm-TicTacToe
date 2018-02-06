@@ -127,7 +127,7 @@ title =
 
 currentPlayerText : Player -> Html msg
 currentPlayerText currentPlayer =
-    currentPlayer |> toString |> (++) "Current Player: " |> text
+    currentPlayer |> stringifyPlayer |> (++) "Current Player: " |> text
 
 
 printTableCell : Coordinate -> Model -> Html Msg
@@ -145,13 +145,13 @@ printTableCell coord model =
 markCell : Coordinate -> Coordinates -> Player -> Html.Attribute a
 markCell coord usedCells player =
     if Set.member coord usedCells then
-        pickClass player |> class
+        stringifyPlayer player |> class
     else
         class "none"
 
 
-pickClass : Player -> String
-pickClass player =
+stringifyPlayer : Player -> String
+stringifyPlayer player =
     case player of
         Cross ->
             "cross"
