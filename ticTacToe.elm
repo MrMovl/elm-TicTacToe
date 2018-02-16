@@ -120,12 +120,12 @@ printGameView model =
         ]
 
 
-title : Html msg
+title : Html Msg
 title =
     h1 [] [ text "There can only be one" ]
 
 
-currentPlayerText : Player -> Html msg
+currentPlayerText : Player -> Html Msg
 currentPlayerText currentPlayer =
     currentPlayer |> stringifyPlayer |> (++) "Current Player: " |> text
 
@@ -172,11 +172,11 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        CellClicked coordinate ->
-            ( takeTurn coordinate model, Cmd.none )
-
         Restart ->
             ( initialModel, Cmd.none )
+
+        CellClicked coordinate ->
+            ( takeTurn coordinate model, Cmd.none )
 
 
 takeTurn : Coordinate -> Model -> Model
@@ -248,23 +248,17 @@ checkCells coords currentPlayer =
         yCoords =
             Array.map (\( x, y ) -> y) coordsAsList
     in
-        Nothing
-            |> checkDiagonal coords currentPlayer
+        checkDiagonal coords currentPlayer
             |> checkDefaultWin xCoords currentPlayer
             |> checkDefaultWin yCoords currentPlayer
 
 
-checkDiagonal : Coordinates -> Player -> Maybe Player -> Maybe Player
-checkDiagonal coords currentPlayer potentialWinner =
-    case potentialWinner of
-        Just a ->
-            potentialWinner
-
-        Nothing ->
-            if (slash coords || backslash coords) then
-                Just currentPlayer
-            else
-                potentialWinner
+checkDiagonal : Coordinates -> Player -> Maybe Player
+checkDiagonal coords currentPlayer =
+    if (slash coords || backslash coords) then
+        Just currentPlayer
+    else
+        Nothing
 
 
 slash : Coordinates -> Bool
