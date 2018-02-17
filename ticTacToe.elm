@@ -24,6 +24,7 @@ main =
 type alias Model =
     { currentPlayer : Player
     , winner : Maybe Player
+    , draw : Bool
     , crosses : Coordinates
     , circles : Coordinates
     , usedCells : Coordinates
@@ -47,6 +48,7 @@ initialModel : Model
 initialModel =
     { currentPlayer = Cross
     , winner = Nothing
+    , draw = False
     , crosses = Set.empty
     , circles = Set.empty
     , usedCells = Set.empty
@@ -61,17 +63,34 @@ view : Model -> Html Msg
 view model =
     case model.winner of
         Nothing ->
-            printGameView model
+            if model.draw then
+                printDrawView
+            else
+                printGameView model
 
         Just player ->
             printWinScreen player
+
+
+printDrawView : Html Msg
+printDrawView =
+    div
+        []
+        [ h1 [] [ text "Draw game!" ]
+        , div []
+            [ div [ class "gameArea" ]
+                [ h3 [] [ text drawMessage ]
+                , button [ onClick Restart ] [ text "Restart?" ]
+                ]
+            ]
+        ]
 
 
 printWinScreen : Player -> Html Msg
 printWinScreen winner =
     div
         []
-        [ h1 [] [ text "There can only be one" ]
+        [ h1 [] [ text (stringifyPlayer winner ++ " won!") ]
         , div []
             [ div [ class "gameArea" ]
                 [ h3 [] [ text winMessage ]
@@ -194,22 +213,38 @@ takeTurn coord model =
 
 updateCrosses : Coordinate -> Model -> Model
 updateCrosses coord model =
-    { currentPlayer = nextPlayer model.currentPlayer
-    , winner = didSomeoneWin model coord
-    , crosses = Set.insert coord model.crosses
-    , circles = model.circles
-    , usedCells = Set.insert coord model.usedCells
-    }
+    let
+        maybeWinner =
+            didSomeoneWin model coord
+
+        newCells =
+            Set.insert coord model.usedCells
+    in
+        { currentPlayer = nextPlayer model.currentPlayer
+        , winner = maybeWinner
+        , draw = maybeWinner == Nothing && allCellsTaken newCells
+        , crosses = Set.insert coord model.crosses
+        , circles = model.circles
+        , usedCells = newCells
+        }
 
 
 updateCircles : Coordinate -> Model -> Model
 updateCircles coord model =
-    { currentPlayer = nextPlayer model.currentPlayer
-    , winner = didSomeoneWin model coord
-    , crosses = model.crosses
-    , circles = Set.insert coord model.circles
-    , usedCells = Set.insert coord model.usedCells
-    }
+    let
+        maybeWinner =
+            didSomeoneWin model coord
+
+        newCells =
+            Set.insert coord model.usedCells
+    in
+        { currentPlayer = nextPlayer model.currentPlayer
+        , winner = maybeWinner
+        , draw = maybeWinner == Nothing && allCellsTaken newCells
+        , crosses = model.crosses
+        , circles = Set.insert coord model.circles
+        , usedCells = newCells
+        }
 
 
 nextPlayer : Player -> Player
@@ -220,6 +255,11 @@ nextPlayer currentPlayer =
 
         Circle ->
             Cross
+
+
+allCellsTaken : Coordinates -> Bool
+allCellsTaken coords =
+    Set.size coords == 9
 
 
 didSomeoneWin : Model -> Coordinate -> Maybe Player
