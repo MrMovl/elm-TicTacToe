@@ -23,7 +23,7 @@ main =
 
 type alias Model =
     { currentPlayer : Player
-    , winner : Maybe Player
+    , state : GameState
     , crosses : Coordinates
     , circles : Coordinates
     , usedCells : Coordinates
@@ -38,6 +38,12 @@ type alias Coordinate =
     ( Int, Int )
 
 
+type GameState
+    = Ongoing
+    | Draw
+    | Winner Player
+
+
 type Player
     = Cross
     | Circle
@@ -46,7 +52,7 @@ type Player
 initialModel : Model
 initialModel =
     { currentPlayer = Cross
-    , winner = Nothing
+    , state = Ongoing
     , crosses = Set.empty
     , circles = Set.empty
     , usedCells = Set.empty
@@ -59,31 +65,44 @@ initialModel =
 
 view : Model -> Html Msg
 view model =
-    case model.winner of
-        Nothing ->
+    case model.state of
+        Ongoing ->
             printGameView model
 
-        Just player ->
-            printWinScreen player
+        Winner player ->
+            printEndScreen winTitle (winMessage player)
+
+        Draw ->
+            printEndScreen drawTitle drawMessage
 
 
-printWinScreen : Player -> Html Msg
-printWinScreen winner =
+printEndScreen : String -> String -> Html Msg
+printEndScreen title message =
     div
         []
-        [ h1 [] [ text "There can only be one" ]
+        [ h1 [] [ text title ]
         , div []
             [ div [ class "gameArea" ]
-                [ h3 [] [ text winMessage ]
+                [ h3 [] [ text message ]
                 , button [ onClick Restart ] [ text "Restart?" ]
                 ]
             ]
         ]
 
 
-winMessage : String
-winMessage =
-    "Holy crap, you won this incredible game of wits. Congratulations, you are a superstar!"
+winTitle : String
+winTitle =
+    "There can only be one"
+
+
+drawTitle : String
+drawTitle =
+    "There can only be none"
+
+
+winMessage : Player -> String
+winMessage winner =
+    "Holy crap" ++ stringifyPlayer winner ++ ", you won this incredible game of wits. Congratulations, you are a superstar!"
 
 
 drawMessage : String
@@ -176,7 +195,7 @@ update msg model =
             ( initialModel, Cmd.none )
 
         CellClicked coordinate ->
-            ( takeTurn coordinate model, Cmd.none )
+            ( takeTurn coordinate model |> Debug.log "Hallo", Cmd.none )
 
 
 takeTurn : Coordinate -> Model -> Model
@@ -195,7 +214,7 @@ takeTurn coord model =
 updateCrosses : Coordinate -> Model -> Model
 updateCrosses coord model =
     { currentPlayer = nextPlayer model.currentPlayer
-    , winner = didSomeoneWin model coord
+    , state = updateGameState model coord
     , crosses = Set.insert coord model.crosses
     , circles = model.circles
     , usedCells = Set.insert coord model.usedCells
@@ -205,7 +224,7 @@ updateCrosses coord model =
 updateCircles : Coordinate -> Model -> Model
 updateCircles coord model =
     { currentPlayer = nextPlayer model.currentPlayer
-    , winner = didSomeoneWin model coord
+    , state = updateGameState model coord
     , crosses = model.crosses
     , circles = Set.insert coord model.circles
     , usedCells = Set.insert coord model.usedCells
@@ -220,6 +239,19 @@ nextPlayer currentPlayer =
 
         Circle ->
             Cross
+
+
+updateGameState : Model -> Coordinate -> GameState
+updateGameState model coord =
+    case (didSomeoneWin model coord) of
+        Just player ->
+            Winner player
+
+        Nothing ->
+            if (Set.size model.usedCells == 8) then
+                Draw
+            else
+                Ongoing
 
 
 didSomeoneWin : Model -> Coordinate -> Maybe Player
